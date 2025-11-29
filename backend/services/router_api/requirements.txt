@@ -1,0 +1,5 @@
+fastapi==0.110.3            # same version as Intent-NER
+uvicorn[standard]==0.30.0
+psycopg[binary]==3.1.18     # Postgres driver
+python-dotenv               # load .env for DB creds (optional)
+httpx

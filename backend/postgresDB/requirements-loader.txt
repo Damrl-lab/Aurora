@@ -1,0 +1,21 @@
+psycopg[binary]==3.1.18
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+pandas
+openpyxl
+pdfminer.six
+pathlib
+
+# ───── vector embedding stack ─────────────────────────
+sentence-transformers==2.7.0     # pulls transformers 4.52.*
+pgvector>=0.2.4 
+
+# Avoid the NumPy-2 ABI mismatch in SciPy / scikit-learn wheels
+numpy<2.0
+scipy<1.12
+scikit-learn<1.6
+
+# Torch ≥2.3 (needs get_default_device) — CPU wheel
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+

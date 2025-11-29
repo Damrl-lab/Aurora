@@ -1,0 +1,8 @@
+fastapi==0.110.3
+uvicorn[standard]==0.30.0
+spacy==3.7.4
+spacy-transformers==1.3.3          # if you want transformer NER
+httpx 
+python-multipart
+psycopg2-binary==2.9.9
+

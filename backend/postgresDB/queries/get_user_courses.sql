@@ -1,0 +1,1 @@
+SELECT * FROM User_Course WHERE user_id = %s;

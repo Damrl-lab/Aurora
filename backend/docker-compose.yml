@@ -1,0 +1,119 @@
+version: "3.9"
+
+services:
+# ---------------- Postgres + pgvector -------------
+  vector_db:
+    image: pgvector/pgvector:pg16
+    env_file: ./postgresDB/.env
+    volumes: [ pgdata:/var/lib/postgresql/data ]
+    ports:  [ "5432:5432" ]
+
+# ---------------- One-shot DB seeder --------------
+  db_init:
+    image: python:3.11-slim
+    depends_on: [ vector_db ]
+    working_dir: /workdir
+    env_file: ./postgresDB/.env
+    environment:
+      PYTHONPATH: /workdir/postgresDB
+      PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    volumes:
+      - ./postgresDB:/workdir/postgresDB:ro
+      - ./data_sources:/workdir/data_sources:ro
+    command: >
+      bash -c "
+        pip install --no-cache-dir -r /workdir/postgresDB/requirements-loader.txt &&
+        python /workdir/postgresDB/init_schema.py || true &&
+        python /workdir/postgresDB/embed_init.py &&
+        python /workdir/postgresDB/data_loaders/load_all.py
+      "
+    restart: "no"
+
+  # ---------------- DeepSeek LLM  -------------------
+  deepseek_llm:
+    build: ./services/deepseek_llm
+    runtime: nvidia
+    working_dir: /app
+    volumes:
+      - ./services/deepseek_llm:/app           
+      - ./services/deepseek_llm/.hf_cache:/hf_cache
+    environment:
+      MODEL_ID: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+      HF_HOME: /hf_cache
+      NVIDIA_VISIBLE_DEVICES: all
+      WATCHFILES_FORCE_POLLING: "true"
+      WATCHFILES_POLLING_INTERVAL: "250"
+    entrypoint: ""         
+    command:
+      - sh
+      - -c
+      - |
+          pip install --no-cache-dir 'uvicorn[standard]' && \
+          exec uvicorn server:app \
+              --host 0.0.0.0 --port 8001 \
+              --reload \
+              --reload-dir=/app \
+              --reload-include='*.py'
+    ports: ["8011:8001"]
+
+
+# ---------------- Intent + NER --------------------
+  intent_ner:
+    build: ./services/intent_ner
+    depends_on: [ vector_db, router_api, deepseek_llm ]   
+    env_file: ./postgresDB/.env
+    environment:
+      PG_DSN:      "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+      ROUTER_URL:  "http://router_api:8000"
+      LLM_URL:     "http://deepseek_llm:8001"             
+    ports: [ "8001:8000" ]      # host 8001, container 8000
+
+# ---------------- Router API ----------------------
+  router_api:
+    build: ./services/router_api
+    depends_on: [ vector_db, deepseek_llm ]
+    env_file: ./postgresDB/.env
+    environment:
+      PG_DSN:        "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+      VALIDATOR_URL: "http://prolog_kb:8000"
+      VECTOR_URL:    "http://embedding_svc:8000"
+      LLM_URL:       "http://deepseek_llm:8001"           
+    ports: [ "8002:8000" ]
+
+# ---------------- Prolog KB -----------------------
+  prolog_kb:
+    build: ./services/prolog_kb
+    depends_on: [ vector_db ]
+    env_file: ./postgresDB/.env
+    environment:
+      PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    ports: [ "8003:8000" ]
+
+# ---------------- Embeddings ----------------------
+  embedding_svc:
+    build: ./services/embedding_svc
+    depends_on: [ vector_db ]
+    env_file: ./postgresDB/.env
+    environment:
+      PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@vector_db:5432/${POSTGRES_DB}"
+    ports: [ "8004:8000" ]
+
+
+# ───────  Orchestrator that runs the full chain  ──────────────────────
+  pipeline_api:
+    image: python:3.11-slim
+    working_dir: /app
+    ports: ["8010:8000"]             
+    environment:
+      INTENT_URL:  "http://intent_ner:8000"    
+      LLM_URL:     "http://deepseek_llm:8001"
+    volumes:
+      - ./services/pipeline_api:/app:ro          
+    command: >
+      sh -c "pip install --no-cache-dir fastapi uvicorn 'httpx<1' &&
+             uvicorn gateway:app --host 0.0.0.0 --port 8000"
+    depends_on: [intent_ner, deepseek_llm]
+
+
+volumes:
+  pgdata: {}

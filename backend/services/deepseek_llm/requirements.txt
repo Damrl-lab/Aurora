@@ -1,0 +1,8 @@
+# services/deepseek_llm/requirements.txt
+numpy<2.0
+fastapi==0.111.*
+uvicorn[standard]==0.29.*
+transformers==4.41.*
+accelerate==0.29.*
+sentencepiece
+bitsandbytes

@@ -1,0 +1,6 @@
+# Hugging Face model caches 
+./backend/services/deepseek_llm/.hf_cache
+
+# Ignore .env files at root and anywhere else
+.env
+**/.env

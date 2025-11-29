@@ -1,6 +1,7 @@
 # Aurora System
 
-Welcome to **Aurora**, an academic advising platform powered by a retrieval‑augmented generation (RAG) backend—and a forthcoming user interface. This root-level README provides a high‑level overview of the full system, development setup, and pointers to individual component READMEs.
+Welcome to **Aurora**, an academic advising platform powered by a retrieval‑augmented generation (RAG) backend—and a forthcoming user interface. This root-level README provides a high-level overview of the system, development setup, and pointers to component READMEs.
+The code here presented aligns with the research described in "Aurora: Neuro-Symbolic AI Driven Advising Agent" (Quincoso Lugones et al., 2026)
 
 ---
 
@@ -19,16 +20,27 @@ Welcome to **Aurora**, an academic advising platform powered by a retrieval‑au
 
 ## Project Overview
 
-Aurora is a modular framework designed to help students select and plan courses using a combination of symbolic reasoning (via Prolog), vector retrieval, and language‑model explanations (via a distilled Qwen‑7B LLM). The system currently supports:
+Aurora is a modular neuro-symbolic framework that helps students select and plan courses by combining:
+* **Structured retrieval (RAG)** of validated catalog facts.
+* **Symbolic reasoning** via Prolog for enforcing prerequisites, credit caps, and program rules.
+* **A BCNF-normalized PostgreSQL catalog** for stable program representation.
+* **Instruction-tuned LLM generation** using a distilled Qwen-7B / DeepSeek model.
+* **A structured Chain-of-Thought controller (5W+1H)** for grounded, concise prompts.
 
-* **Backend services** (Aurora pipeline and subcomponents) for intent extraction, eligibility checks, and course recommendations.
-* **Future Frontend** to deliver a web interface where students can interact with Aurora.
+Aurora supports:
+
+* Short-term scheduling
+* Long-term degree planning
+* Skill-aligned pathways
+* Out-of-scope detection
+* Natural-language explanations for verified plans
 
 Key features:
 
-* Deterministic, reproducible recommendations
-* 100% accurate grounding through Prolog KB
-* Clear, friendly advice from DeepSeek LLM
+* Deterministic, reproducible reasoning through SQL and Prolog
+* Retrieval-augmented prompts (COURSE_FACT, PREREQ_CHAIN)
+* Token-efficient prompting via the 5W+1H controller
+* Clear, friendly LLM explanations grounded strictly in verified data
 
 ---
 
@@ -66,12 +78,15 @@ Key features:
 
 ## Backend
 
-The backend is a collection of FastAPI microservices, a Postgres/pgvector database, and a SWI‑Prolog knowledge base. It orchestrates:
+The backend is a collection of FastAPI microservices, a BCNF-normalized PostgreSQL catalog, and a SWI-Prolog reasoning engine, integrated through a retrieval-augmented generation (RAG) pipeline. It orchestrates:
 
 * **Intent Extraction & NER**
-* **Prolog-based Eligibility & Planning**
-* **Vector Embeddings & Retrieval**
-* **DeepSeek LLM Advice**
+* **SQL-based Retrieval** of relevant catalog facts (eligible courses, skills, prerequisites)
+* **Prolog-based Validation & Planning** (prerequisites, co-requisites, credit caps, term constraints)
+* **Structured Chain-of-Thought Controller (5W+1H)** for compact RAG prompt assembly
+* **DeepSeek/Qwen LLM Generation** for natural-language explanations grounded strictly in retrieved evidence
+  
+Aurora’s backend supports short-term scheduling, long-term planning, skill-aligned pathways, and out-of-scope detection, all enforced through symbolic and relational constraints.
 
 For full details and commands, see:
 
@@ -103,18 +118,7 @@ Frontend framework and instructions will be documented here once the initial sca
 
 ---
 
-## Contributing
+## Citation
 
-1. Fork the repo and create a feature branch (`git checkout -b feature/xyz`).
-2. Make your changes, ensuring you update or add tests where applicable.
-3. Commit and push to your fork.
-4. Open a Pull Request, describing your changes and linking any relevant issues.
-
-Please follow the code style and commit message guidelines outlined in `backend/README.md`.
-
----
-
-## License
-
-This project is not currently supported by any license.
+When using this repository or referencing this work, please cite: Lorena Amanda Quincoso Lugones, Christopher Kverne, Nityam Shardakhrmin, Ana Carolina Oliveira, Agoritsa Polyzou, Christine Lisetti, Janki Bhimani "Aurora: Neuro-Symbolic AI Driven Advising Agent".
 

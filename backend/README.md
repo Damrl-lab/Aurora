@@ -1,6 +1,6 @@
-# Aurora Course-Advisor Backend
+# Aurora Backend
 
-Welcome to the Aurora Course-Advisor backend! This README will guide you through setting up, running, and contributing to the Aurora microservices pipeline.
+This README covers setup, architecture, and service orchestration for Aurora’s neuro-symbolic retrieval-augmented generation (RAG) pipeline.
 
 ---
 
@@ -15,20 +15,20 @@ Welcome to the Aurora Course-Advisor backend! This README will guide you through
 7. [Running Tests](#running-tests)
 8. [Database Access](#database-access)
 9. [Troubleshooting & Tips](#troubleshooting--tips)
-10. [Contributing](#contributing)
-11. [License](#license)
 
 ---
 
 ## Project Overview
 
-Aurora is an academic-advising assistant built as a retrieval-augmented generation (RAG) pipeline. It consists of modular microservices that handle intent extraction, symbolic reasoning, retrieval, and language-model-based advice.
+Aurora is an academic-advising assistant built as a neuro-symbolic, retrieval-augmented generation (RAG) pipeline.
+The backend is composed of lightweight microservices that coordinate:
 
-Key goals:
-
-* 100% accurate grounding via Prolog knowledge base
-* Friendly, structured advice via DeepSeek LLM
-* Deterministic, reproducible responses
+* Intent & entity extraction
+* Structured retrieval from a BCNF PostgreSQL catalog
+* Symbolic reasoning (SWI-Prolog) for prerequisites, co-requisites, and credit constraints
+* 5W+1H Chain-of-Thought controller
+* LLM generation using a distilled Qwen-7B / DeepSeek model
+This is the exact system described and evaluated in “Aurora: Neuro-Symbolic AI Driven Advising Agent” (AIED/SAC’26).
 
 ---
 
@@ -60,7 +60,7 @@ docker info
 ├── pipeline_api/      # Orchestration service wiring microservices together
 ├── postgresDB/        # SQL schema and migration files
 ├── services/
-│   ├── embedding_svc/ # Embedding service for vectorization
+│   ├── embedding_svc/ # UNUSED (future extension)
 │   ├── intent_ner/    # Intent extraction & NER microservice
 │   ├── pipeline_api/  # (alias) orchestrator
 │   ├── prolog_kb/     # SWI‑Prolog knowledge base REST facade
@@ -71,6 +71,9 @@ docker info
 ├── docker-compose.yml # Docker Compose config for all services
 └── README.md          # (this file)
 ```
+Important:
+* embedding_svc/ exist for future work but is not part of the evaluated or active RAG pipeline.
+* Aurora’s retrieval layer is SQL + Prolog, not vector-based.
 
 ---
 
@@ -130,7 +133,7 @@ docker compose restart pipeline_api
 
 docker compose up -d \
   router_api intent_ner prolog_kb \
-  deepseek_llm pipeline_api embedding_svc vector_db
+  deepseek_llm pipeline_api vector_db
 ```
 
 ### 6. Logs & Monitoring
@@ -233,18 +236,3 @@ docker compose exec vector_db psql -U postgres -d course_advisor
 * **Model changes**: Editing `server.py` in `deepseek_llm` auto‑reloads Uvicorn (\~1s).
 * **Port conflicts**: Ensure no other services occupy ports 8000–8010.
 * **Prolog issues**: Check Prolog rule files under `services/prolog_kb`; use `DEBUG_PROLOG=true` in `.env`.
-
----
-
-## Contributing
-
-1. Fork the repository and create a feature branch.
-2. Write clear commit messages and keep changes scoped.
-3. Add tests for new functionality under `/evaluation`.
-4. Submit a Pull Request and request review.
-
----
-
-## License
-
-This project is not currently supported by any license.

@@ -65,14 +65,14 @@ docker info
 │   ├── pipeline_api/  # (alias) orchestrator
 │   ├── prolog_kb/     # SWI‑Prolog knowledge base REST facade
 │   ├── router_api/    # Router API dispatching requests to subservices
-│   ├── vector_db/     # Vector database configuration (e.g., Postgres/pgvector)
+│   ├── vector_db/     # Vector database configuration (e.g., Postgres)
 │   └── deepseek_llm/  # DeepSeek Qwen‑7B LLM microservice
 ├── .env               # Environment variables
 ├── docker-compose.yml # Docker Compose config for all services
 └── README.md          # (this file)
 ```
 Important:
-* embedding_svc/ exist for future work but is not part of the evaluated or active RAG pipeline.
+* embedding_svc/ exists for future work but is not part of the evaluated or active RAG pipeline.
 * Aurora’s retrieval layer is SQL + Prolog, not vector-based.
 
 ---
@@ -201,7 +201,8 @@ Use Postman (or any HTTP client) to hit the following endpoints:
 1. **router\_api**: Entry point for client requests; routes to intent\_ner & downstream services.
 2. **intent\_ner**: Neural-driven intent and named-entity recognition; extracts `recommend-courses` and parameters.
 3. **prolog\_kb**: Symbolic reasoning over course prerequisites, eligibility, and long-term planning.
-4. **vector\_db**: Vector storage (Postgres + pgvector) for course embeddings.
+4. **vector\_db**: PostgreSQL instance (pgvector-enabled image) used for Aurora’s
+   relational BCNF catalog. Stores courses, programs, skills, and prerequisite data.
 5. **embedding\_svc**: Converts course descriptions into embedding vectors. This component is currently disconnected from the pipeline, but it might be useful in future implementations.
 6. **pipeline\_api**: Orchestrates end-to-end pipeline: triggers retrieval, combines Prolog output, calls LLM.
 7. **deepseek\_llm**: Qwen‑7B-based LLM service that formats chain‑of‑thought and final advice.

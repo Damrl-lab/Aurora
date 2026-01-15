@@ -94,6 +94,28 @@ app = FastAPI(title="Course-Advisor · Router")
 _month_re = re.compile(r"\b(" + "|".join(calendar.month_name[1:]) + r")\b", re.I)
 COURSE_RE = re.compile(r"\b([A-Z]{2,4})[_\-\s]?(\d{3,4})\b")
 
+def check_term_offering_warning(semester: str | None) -> str | None:
+    """
+    Check if the database has term-offering metadata.
+    Returns a warning message if the data is missing, None otherwise.
+    """
+    if not semester:
+        return None
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 1
+              FROM information_schema.columns
+             WHERE table_name='courses'
+               AND column_name='terms_offered'
+        """)
+        has_terms = cur.fetchone() is not None
+    if not has_terms:
+        return (
+            f"⚠️ I don't have data on which courses are offered in "
+            f"{semester}. These recommendations ignore term availability."
+        )
+    return None
+
 def _normalize_id(cid: str) -> str:
     """
     Convert your DB course_id (e.g. "COP_2210") into the Prolog atom form ("cop2210").
@@ -101,15 +123,19 @@ def _normalize_id(cid: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "", cid).lower()
 
 def _skill_names(ids: list[int]) -> list[str]:
+    """Convert skill IDs to skill names for display in prompts."""
     if not ids:
         return []
     with conn.cursor() as cur:
         cur.execute("SELECT skill_name FROM skills WHERE skill_id=ANY(%s)", (ids,))
         return [r[0] for r in cur.fetchall()]
 
-def get_student_context(user_id: int):
+def get_student_context(user_id: int) -> tuple[str | None, list[str]]:
+    """
+    Fetch student's active program and course history.
+    Returns (program_id, list_of_taken_course_ids).
+    """
     with conn.cursor() as cur:
-        # only pick an active enrollment
         cur.execute("""
             SELECT mo.program_id,
                    COALESCE(m.major_name, mo.program_name)
@@ -135,7 +161,11 @@ def extract_course_id(raw: str) -> str:
     return f"{m.group(1)}_{m.group(2)}"
 
 def completed_courses(user_id: int) -> list[str]:
-    """Fetch user’s completed courses from user_course."""
+    """
+    Fetch user's completed courses from user_course.
+    Note: Similar function exists in intent_ner (returns set instead of list).
+    Kept separate as services run in isolated containers.
+    """
     with conn.cursor() as cur:
         cur.execute("""
             SELECT course_id
@@ -146,6 +176,7 @@ def completed_courses(user_id: int) -> list[str]:
         return [r[0].upper() for r in cur.fetchall()]
     
 def infer_next_term_year(semester: str) -> int:
+    """Infer the calendar year for the next occurrence of a given semester."""
     today = datetime.date.today()
     yr, mo = today.year, today.month
     sem = semester.lower()
@@ -182,6 +213,11 @@ async def _prolog_stub(cid: str) -> dict[str, str]:
 
 async def make_course_blocks(cur: psycopg.Cursor,
                             ids: list[str]) -> tuple[str, list[str]]:
+    """
+    Build COURSE_FACT blocks for the given course IDs.
+    Returns (formatted_blocks_string, list_of_confirmed_ids).
+    Falls back to Prolog KB if course not found in Postgres.
+    """
     if not ids:
         return "", []
     cur.execute("""
@@ -211,15 +247,16 @@ credits: {cr}
     return "\n".join(blocks), confirmed
 
 def build_prompt(raw_q: str, f: Filter, ctx_blocks: str, top_ids: list[str]) -> str:
+    """
+    Build a structured 5W+1H prompt for the LLM.
+    Combines student query, context blocks, and chain-of-thought frame.
+    """
     who = f.program or "unknown major"
     if f.user_id and not f.program:
         major, _ = get_student_context(f.user_id)
         who = major or who
 
     what = raw_q[:80] + ("…" if len(raw_q) > 80 else "")
-    # build “WHEN:” label including the year
-    # if the user requested a semester but we have no offerings table/column:
-    warning = None
     if f.semester:
         year = f.year or infer_next_term_year(f.semester)
         when = f"{f.semester} {year}"
@@ -285,23 +322,8 @@ async def candidate_ids(f: Filter):
         f.year = infer_next_term_year(f.semester)
 
     # check for missing term‐offering metadata
-    warning: str | None = None
-    if f.semester:
-        with conn.cursor() as cur:
-            cur.execute("""
-              SELECT 1
-                FROM information_schema.columns
-               WHERE table_name='courses'
-                 AND column_name='terms_offered'
-            """)
-            has_terms = cur.fetchone() is not None
+    warning = check_term_offering_warning(f.semester)
 
-        if not has_terms:
-            warning = (
-                f"⚠️ I don’t have data on which courses are offered in "
-                f"{f.semester}. These recommendations ignore term availability."
-            )
-            
     # 2) Load ALL program courses + core flag + year
     with conn.cursor() as cur:
         cur.execute("""
@@ -453,6 +475,7 @@ async def candidate_ids(f: Filter):
 
 # ─────────────────── 2. Long-term roadmap ──────────────────────────
 def build_roadmap_prompt(raw_q: str, f: Filter, plan: list[dict]) -> str:
+    """Build a structured prompt for multi-semester degree planning."""
     who = f.program or "unknown major"
     # label WHEN line as e.g. “Fall 2025”
     when = f"{f.semester} {f.year}" if f.semester else "next available term"
@@ -522,28 +545,9 @@ async def roadmap(f: Filter):
         "taken":          taken,
         "credit_cap":     f.credit_cap or 15,
         "start_semester": start_sem,
-        "start_semester": start_sem,
     }
     
-    warning: str | None = None
-
-    if f.semester:
-        # see if we have a `terms_offered` column
-        with conn.cursor() as cur:
-            cur.execute("""
-            SELECT 1
-                FROM information_schema.columns
-            WHERE table_name='courses'
-                AND column_name='terms_offered'
-            """)
-            has_terms = cur.fetchone() is not None
-
-        if not has_terms:
-            warning = (
-                f"⚠️ I don’t have data on which courses are offered in "
-                f"{f.semester}. These recommendations ignore term availability."
-            )
-            
+    warning = check_term_offering_warning(f.semester)
 
     # ── 2. call Prolog planner ───────────────────────────────────
     try:

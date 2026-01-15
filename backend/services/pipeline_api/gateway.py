@@ -1,4 +1,9 @@
-# ── services/pipeline_api/gateway.py ───────────────────────────────────
+"""
+Pipeline API Gateway
+
+Orchestrates the full RAG pipeline: intent_ner → router_api → deepseek_llm.
+Provides a single /recommend endpoint for end-to-end processing.
+"""
 import os
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -35,6 +40,11 @@ app = FastAPI(title="Full-pipeline gateway")
 
 @app.post("/recommend", response_model=RecommendResponse)
 async def recommend(query: Query) -> RecommendResponse:
+    """
+    End-to-end recommendation pipeline.
+    1) Calls intent_ner for query parsing and retrieval
+    2) Calls deepseek_llm for natural language response generation
+    """
     async with httpx.AsyncClient() as cli:
 
         # 1) symbolic / vector pipeline

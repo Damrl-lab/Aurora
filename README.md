@@ -13,8 +13,7 @@ The code here presented aligns with the research described in "Aurora: Neuro-Sym
 4. [Backend](#backend)
 5. [Frontend (UI)](#frontend-ui)
 6. [Testing](#testing)
-7. [Contributing](#contributing)
-8. [License](#license)
+7. [Citation](#citation)
 
 ---
 
@@ -47,7 +46,7 @@ Key features:
 ## Repository Structure
 
 ```
-/                      # Root of Course-Advisor
+/                      # Root of Aurora
 ├── backend/           # Microservices pipeline (current focus)
 ├── frontend/          # Web UI (in progress)
 ├── .gitignore
@@ -61,18 +60,37 @@ Key features:
 
 ## Getting Started
 
-1. **Clone the repository**
+### Prerequisites
 
-   ```bash
-   git clone https://github.com/your-org/course-advisor.git
-   cd course-advisor
-   ```
+| Requirement | macOS | Windows |
+|------------|-------|---------|
+| **Docker Desktop** | [Download for Mac](https://docs.docker.com/desktop/install/mac-install/) | [Download for Windows](https://docs.docker.com/desktop/install/windows-install/) |
+| **Git** | Pre-installed or via `brew install git` | [Download Git for Windows](https://git-scm.com/download/win) |
+| **Terminal** | Terminal.app or iTerm2 | PowerShell or Windows Terminal |
 
-2. **Explore the Backend**
-   Follow detailed instructions in `backend/README.md` to get the microservices running via Docker.
+> **Windows Users**: Enable WSL 2 (Windows Subsystem for Linux) for best Docker performance. Docker Desktop will prompt you during installation.
 
-3. **UI Development**
-   The `frontend/` folder will host the web application. Instructions and dependencies will be added once the UI scaffold is in place.
+### 1. Clone the repository
+
+**macOS / Linux (Terminal)**:
+```bash
+git clone <repository-url>
+cd Aurora
+```
+
+**Windows (PowerShell)**:
+```powershell
+git clone <repository-url>
+cd Aurora
+```
+
+### 2. Explore the Backend
+
+Follow detailed instructions in `backend/README.md` to get the microservices running via Docker.
+
+### 3. UI Development
+
+The `frontend/` folder will host the web application. Instructions and dependencies will be added once the UI scaffold is in place.
 
 ---
 

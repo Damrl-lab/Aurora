@@ -1,12 +1,15 @@
+"""
+Prolog Knowledge Base Validator Service
+
+Provides a REST API facade over SWI-Prolog for prerequisite checking,
+eligibility validation, and multi-semester roadmap planning.
+"""
 from __future__ import annotations
 
 import os, re, subprocess
-from typing import List, Optional
-from typing import Dict
-from fastapi import FastAPI, HTTPException
+from typing import List, Optional, Dict
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel, Field
-from typing import Dict
-from fastapi import Body
 import textwrap
 
 # ── CONFIG ───────────────────────────────────────────────────────────
@@ -14,8 +17,8 @@ app       = FastAPI(title="Prolog-KB Validator")
 PROLOG_KB = os.path.join(os.getcwd(), "rules_loader.pl")
 DEBUG     = bool(os.getenv("DEBUG_PROLOG"))
 
-_COURSE_RX = re.compile(r"[A-Za-z0-9]+")      # course atoms never keep “_”
-_PROG_RX = re.compile(r"[A-Za-z0-9_]+")    # programme atoms may keep it
+_COURSE_RX = re.compile(r"[A-Za-z0-9]+")   # course atoms (used by atoms_from_list_literal)
+_PROG_RX   = re.compile(r"[A-Za-z0-9_]+")  # programme atoms may keep underscores
 
 
 # ──────────────────────── helpers ─────────────────────────────
@@ -176,6 +179,7 @@ def course_title(req: Dict[str, str] = Body(...)):
 
 @app.post("/recommend_now", response_model=RecommendNowResponse)
 def recommend_now(req: RecommendNowRequest):
+    """Filter candidate courses to those immediately takeable based on prerequisites."""
     # — normalize & consult the proper flowchart for this program
     prog_atom = norm_prog(req.program) if req.program else ""
     consult_snip = f"load_program({prog_atom}), " if prog_atom else ""
@@ -282,6 +286,7 @@ def _parse_blocks(raw: str) -> list[dict]:
 
 @app.post("/roadmap", response_model=RoadmapResponse)
 def roadmap(req: RoadmapRequest):
+    """Generate a multi-semester degree completion roadmap using Prolog's make_plan/5."""
     prog   = norm_prog(req.program)
     folder = "graduate" if prog.startswith(("ms_", "phd_")) else "undergraduate"
     path   = f"flowchart_rules/{folder}/{prog}_rules.pl"

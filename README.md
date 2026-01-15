@@ -1,6 +1,6 @@
 # Aurora System
 
-Welcome to **Aurora**, an academic advising platform powered by a retrieval‑augmented generation (RAG) backend—and a forthcoming user interface. This root-level README provides a high-level overview of the system, development setup, and pointers to component READMEs.
+Welcome to **Aurora**, an academic advising platform powered by a retrieval‑augmented generation (RAG) backend (and a forthcoming user interface). This root-level README provides a high-level overview of the system, development setup, and pointers to component READMEs.
 The code here presented aligns with the research described in "Aurora: Neuro-Symbolic AI Driven Advising Agent" (Quincoso Lugones et al., 2026)
 
 ---

@@ -13,8 +13,7 @@ The code here presented aligns with the research described in "Aurora: Neuro-Sym
 4. [Backend](#backend)
 5. [Frontend (UI)](#frontend-ui)
 6. [Testing](#testing)
-7. [Contributing](#contributing)
-8. [License](#license)
+7. [Citation](#citation)
 
 ---
 
@@ -47,7 +46,7 @@ Key features:
 ## Repository Structure
 
 ```
-/                      # Root of Course-Advisor
+/                      # Root of Aurora
 ├── backend/           # Microservices pipeline (current focus)
 ├── frontend/          # Web UI (in progress)
 ├── .gitignore
@@ -64,8 +63,8 @@ Key features:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-org/course-advisor.git
-   cd course-advisor
+   git clone <repository-url>
+   cd Aurora
    ```
 
 2. **Explore the Backend**

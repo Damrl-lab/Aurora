@@ -75,11 +75,14 @@ docker info
 
 ## Environment Configuration
 
-Copy and update the `.env` file in the `backend/` folder:
+Create a `.env` file in `backend/postgresDB/` with the following variables:
 
 ```bash
-cp .env.example .env
-# Edit .env to set MODEL_ID, database credentials, API keys, and any Prolog paths
+POSTGRES_DB=course_advisor
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=<your-password>
+POSTGRES_HOST=vector_db
+POSTGRES_PORT=5432
 ```
 
 ---
@@ -194,14 +197,12 @@ Use Postman (or any HTTP client) to hit the following endpoints:
 
 ## Components & Workflow
 
-1. **router\_api**: Entry point for client requests; routes to intent\_ner & downstream services.
-2. **intent\_ner**: Neural-driven intent and named-entity recognition; extracts `recommend-courses` and parameters.
-3. **prolog\_kb**: Symbolic reasoning over course prerequisites, eligibility, and long-term planning.
-4. **vector\_db**: PostgreSQL instance (pgvector-enabled image) used for Aurora’s
-   relational BCNF catalog. Stores courses, programs, skills, and prerequisite data.
-5. **embedding\_svc**: Converts course descriptions into embedding vectors. This component is currently disconnected from the pipeline, but it might be useful in future implementations.
-6. **pipeline\_api**: Orchestrates end-to-end pipeline: triggers retrieval, combines Prolog output, calls LLM.
-7. **deepseek\_llm**: Qwen‑7B-based LLM service that formats chain‑of‑thought and final advice.
+1. **intent\_ner**: Parses user queries to extract intent and entities (skills, semesters, credit caps).
+2. **router\_api**: SQL-based retrieval from PostgreSQL; builds structured prompts with course facts.
+3. **prolog\_kb**: Symbolic reasoning over prerequisites, eligibility, and long-term planning.
+4. **deepseek\_llm**: Qwen‑7B-based LLM that generates chain-of-thought reasoning and natural-language advice.
+5. **pipeline\_api**: Orchestrates the full pipeline: intent → retrieval → LLM.
+6. **vector\_db**: PostgreSQL instance (pgvector-enabled) storing the BCNF-normalized course catalog.
 
 ---
 

@@ -34,19 +34,78 @@ This is the exact system described and evaluated in “Aurora: Neuro-Symbolic AI
 
 ## Prerequisites
 
-* **Docker Engine** (>= 20.10)
-* **Docker Compose** (>= 2.0)
+* **Docker Desktop** (includes Docker Engine >= 20.10 and Docker Compose >= 2.0)
 * **Git**
-* Optional: GPU with NVIDIA drivers for hardware acceleration
+* **8+ GB RAM** recommended for running all services
+* Optional: **NVIDIA GPU** for hardware-accelerated LLM inference (Windows/Linux only)
 
-### Docker instructions:
-* You may install  Docker by using the following link: https://docs.docker.com/desktop/
-* After installation and restarting your machine, please, ensure that Docker is running on the background by opening the application.
-* Then open a terminal as an Administrator, and verify its installation by doing:
+---
 
-```bash
-docker info
-```
+## Platform-Specific Setup
+
+### macOS
+
+1. **Install Docker Desktop**
+   - Download from [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+   - Choose the correct version: **Apple Silicon (M1/M2/M3)** or **Intel**
+   - Drag to Applications and launch
+
+2. **Allocate Resources**
+   - Open Docker Desktop → Settings → Resources
+   - Recommended: **8 GB RAM**, **4 CPUs**, **50 GB disk**
+
+3. **Verify Installation**
+   ```bash
+   docker info
+   docker compose version
+   ```
+
+4. **GPU Note**: Apple Silicon Macs do not support NVIDIA GPUs. The LLM service will run on CPU (slower but functional).
+
+### Windows
+
+1. **Enable WSL 2** (Required for best performance)
+   - Open PowerShell as Administrator:
+     ```powershell
+     wsl --install
+     ```
+   - Restart your computer when prompted
+
+2. **Install Docker Desktop**
+   - Download from [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+   - During installation, ensure **"Use WSL 2 instead of Hyper-V"** is checked
+   - Restart when prompted
+
+3. **Allocate Resources**
+   - Open Docker Desktop → Settings → Resources → WSL Integration
+   - Enable integration with your WSL distro
+   - Under Resources → Advanced: **8 GB RAM**, **4 CPUs**
+
+4. **Verify Installation** (PowerShell or Windows Terminal)
+   ```powershell
+   docker info
+   docker compose version
+   ```
+
+5. **GPU Acceleration** (Optional - NVIDIA only)
+   - Install [NVIDIA drivers](https://www.nvidia.com/Download/index.aspx)
+   - Install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+   - The `deepseek_llm` service will automatically use GPU if available
+
+### Linux
+
+1. **Install Docker Engine**
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   # Log out and back in
+   ```
+
+2. **Verify Installation**
+   ```bash
+   docker info
+   docker compose version
+   ```
 
 ---
 
@@ -77,10 +136,35 @@ docker info
 
 Create a `.env` file in `backend/postgresDB/` with the following variables:
 
+**macOS / Linux (Terminal)**:
 ```bash
+cd backend/postgresDB
+cat > .env << 'EOF'
 POSTGRES_DB=course_advisor
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<your-password>
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_HOST=vector_db
+POSTGRES_PORT=5432
+EOF
+```
+
+**Windows (PowerShell)**:
+```powershell
+cd backend\postgresDB
+@"
+POSTGRES_DB=course_advisor
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_HOST=vector_db
+POSTGRES_PORT=5432
+"@ | Out-File -Encoding utf8 .env
+```
+
+Or manually create the file with any text editor containing:
+```
+POSTGRES_DB=course_advisor
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
 POSTGRES_HOST=vector_db
 POSTGRES_PORT=5432
 ```
@@ -230,7 +314,47 @@ docker compose exec vector_db psql -U postgres -d course_advisor
 
 ## Troubleshooting & Tips
 
-* **Stale containers**: Always run `docker compose down` before builds. 
-* **Model changes**: Editing `server.py` in `deepseek_llm` auto‑reloads Uvicorn (\~1s).
-* **Port conflicts**: Ensure no other services occupy ports 8000–8010.
-* **Prolog issues**: Check Prolog rule files under `services/prolog_kb`; use `DEBUG_PROLOG=true` in `.env`.
+### General Issues
+
+| Issue | Solution |
+|-------|----------|
+| **Stale containers** | Run `docker compose down` before builds |
+| **Model changes not reflected** | Editing `server.py` in `deepseek_llm` auto-reloads (~1s) |
+| **Port conflicts** | Ensure ports 8000–8011 are free |
+| **Prolog issues** | Check rule files in `services/prolog_kb`; set `DEBUG_PROLOG=true` |
+
+### macOS-Specific
+
+| Issue | Solution |
+|-------|----------|
+| **Docker Desktop won't start** | Reset Docker Desktop: `rm -rf ~/Library/Group\ Containers/group.com.docker` |
+| **Slow performance on Apple Silicon** | Increase RAM allocation in Docker Desktop → Settings → Resources |
+| **"Cannot connect to Docker daemon"** | Ensure Docker Desktop is running (check menu bar icon) |
+
+### Windows-Specific
+
+| Issue | Solution |
+|-------|----------|
+| **WSL 2 not installed** | Run `wsl --install` in PowerShell (Admin), then restart |
+| **Docker Desktop won't start** | Ensure WSL 2 is enabled and Hyper-V is disabled |
+| **"permission denied" errors** | Run PowerShell/Terminal as Administrator |
+| **Line ending issues (CRLF)** | Configure Git: `git config --global core.autocrlf input` |
+| **Path too long errors** | Enable long paths: `git config --global core.longpaths true` |
+| **Slow file system in WSL** | Store project files in WSL filesystem (`/home/`) not Windows (`/mnt/c/`) |
+
+### Checking Service Health
+
+```bash
+# Check if all containers are running
+docker compose ps
+
+# View logs for a specific service
+docker compose logs -f <service_name>
+
+# Restart a stuck service
+docker compose restart <service_name>
+
+# Full reset (removes volumes - will delete database!)
+docker compose down -v
+docker compose up -d
+```

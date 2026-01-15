@@ -60,18 +60,37 @@ Key features:
 
 ## Getting Started
 
-1. **Clone the repository**
+### Prerequisites
 
-   ```bash
-   git clone <repository-url>
-   cd Aurora
-   ```
+| Requirement | macOS | Windows |
+|------------|-------|---------|
+| **Docker Desktop** | [Download for Mac](https://docs.docker.com/desktop/install/mac-install/) | [Download for Windows](https://docs.docker.com/desktop/install/windows-install/) |
+| **Git** | Pre-installed or via `brew install git` | [Download Git for Windows](https://git-scm.com/download/win) |
+| **Terminal** | Terminal.app or iTerm2 | PowerShell or Windows Terminal |
 
-2. **Explore the Backend**
-   Follow detailed instructions in `backend/README.md` to get the microservices running via Docker.
+> **Windows Users**: Enable WSL 2 (Windows Subsystem for Linux) for best Docker performance. Docker Desktop will prompt you during installation.
 
-3. **UI Development**
-   The `frontend/` folder will host the web application. Instructions and dependencies will be added once the UI scaffold is in place.
+### 1. Clone the repository
+
+**macOS / Linux (Terminal)**:
+```bash
+git clone <repository-url>
+cd Aurora
+```
+
+**Windows (PowerShell)**:
+```powershell
+git clone <repository-url>
+cd Aurora
+```
+
+### 2. Explore the Backend
+
+Follow detailed instructions in `backend/README.md` to get the microservices running via Docker.
+
+### 3. UI Development
+
+The `frontend/` folder will host the web application. Instructions and dependencies will be added once the UI scaffold is in place.
 
 ---
 

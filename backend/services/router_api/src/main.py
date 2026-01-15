@@ -94,6 +94,28 @@ app = FastAPI(title="Course-Advisor · Router")
 _month_re = re.compile(r"\b(" + "|".join(calendar.month_name[1:]) + r")\b", re.I)
 COURSE_RE = re.compile(r"\b([A-Z]{2,4})[_\-\s]?(\d{3,4})\b")
 
+def check_term_offering_warning(semester: str | None) -> str | None:
+    """
+    Check if the database has term-offering metadata.
+    Returns a warning message if the data is missing, None otherwise.
+    """
+    if not semester:
+        return None
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 1
+              FROM information_schema.columns
+             WHERE table_name='courses'
+               AND column_name='terms_offered'
+        """)
+        has_terms = cur.fetchone() is not None
+    if not has_terms:
+        return (
+            f"⚠️ I don't have data on which courses are offered in "
+            f"{semester}. These recommendations ignore term availability."
+        )
+    return None
+
 def _normalize_id(cid: str) -> str:
     """
     Convert your DB course_id (e.g. "COP_2210") into the Prolog atom form ("cop2210").
@@ -135,7 +157,11 @@ def extract_course_id(raw: str) -> str:
     return f"{m.group(1)}_{m.group(2)}"
 
 def completed_courses(user_id: int) -> list[str]:
-    """Fetch user’s completed courses from user_course."""
+    """
+    Fetch user's completed courses from user_course.
+    Note: Similar function exists in intent_ner (returns set instead of list).
+    Kept separate as services run in isolated containers.
+    """
     with conn.cursor() as cur:
         cur.execute("""
             SELECT course_id
@@ -285,23 +311,8 @@ async def candidate_ids(f: Filter):
         f.year = infer_next_term_year(f.semester)
 
     # check for missing term‐offering metadata
-    warning: str | None = None
-    if f.semester:
-        with conn.cursor() as cur:
-            cur.execute("""
-              SELECT 1
-                FROM information_schema.columns
-               WHERE table_name='courses'
-                 AND column_name='terms_offered'
-            """)
-            has_terms = cur.fetchone() is not None
+    warning = check_term_offering_warning(f.semester)
 
-        if not has_terms:
-            warning = (
-                f"⚠️ I don’t have data on which courses are offered in "
-                f"{f.semester}. These recommendations ignore term availability."
-            )
-            
     # 2) Load ALL program courses + core flag + year
     with conn.cursor() as cur:
         cur.execute("""
@@ -522,28 +533,9 @@ async def roadmap(f: Filter):
         "taken":          taken,
         "credit_cap":     f.credit_cap or 15,
         "start_semester": start_sem,
-        "start_semester": start_sem,
     }
     
-    warning: str | None = None
-
-    if f.semester:
-        # see if we have a `terms_offered` column
-        with conn.cursor() as cur:
-            cur.execute("""
-            SELECT 1
-                FROM information_schema.columns
-            WHERE table_name='courses'
-                AND column_name='terms_offered'
-            """)
-            has_terms = cur.fetchone() is not None
-
-        if not has_terms:
-            warning = (
-                f"⚠️ I don’t have data on which courses are offered in "
-                f"{f.semester}. These recommendations ignore term availability."
-            )
-            
+    warning = check_term_offering_warning(f.semester)
 
     # ── 2. call Prolog planner ───────────────────────────────────
     try:

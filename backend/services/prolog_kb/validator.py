@@ -3,10 +3,8 @@ from __future__ import annotations
 import os, re, subprocess
 from typing import List, Optional
 from typing import Dict
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from pydantic import BaseModel, Field
-from typing import Dict
-from fastapi import Body
 import textwrap
 
 # ── CONFIG ───────────────────────────────────────────────────────────
@@ -14,8 +12,8 @@ app       = FastAPI(title="Prolog-KB Validator")
 PROLOG_KB = os.path.join(os.getcwd(), "rules_loader.pl")
 DEBUG     = bool(os.getenv("DEBUG_PROLOG"))
 
-_COURSE_RX = re.compile(r"[A-Za-z0-9]+")      # course atoms never keep “_”
-_PROG_RX = re.compile(r"[A-Za-z0-9_]+")    # programme atoms may keep it
+_COURSE_RX = re.compile(r"[A-Za-z0-9]+")   # course atoms (used by atoms_from_list_literal)
+_PROG_RX   = re.compile(r"[A-Za-z0-9_]+")  # programme atoms may keep underscores
 
 
 # ──────────────────────── helpers ─────────────────────────────

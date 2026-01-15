@@ -54,26 +54,22 @@ docker info
 
 ```
 /backend
-├── common/            # Shared utilities and data models
 ├── data_sources/      # ETL scripts for loading courses, programs, skills
 ├── evaluation/        # Test suites and evaluation scripts
-├── pipeline_api/      # Orchestration service wiring microservices together
-├── postgresDB/        # SQL schema and migration files
+├── postgresDB/        # SQL schema, migrations, and data loaders
 ├── services/
-│   ├── embedding_svc/ # UNUSED (future extension)
+│   ├── deepseek_llm/  # DeepSeek Qwen‑7B LLM microservice
+│   ├── embedding_svc/ # Vector embeddings (future extension, currently unused)
 │   ├── intent_ner/    # Intent extraction & NER microservice
-│   ├── pipeline_api/  # (alias) orchestrator
+│   ├── pipeline_api/  # End-to-end pipeline orchestrator
 │   ├── prolog_kb/     # SWI‑Prolog knowledge base REST facade
-│   ├── router_api/    # Router API dispatching requests to subservices
-│   ├── vector_db/     # Vector database configuration (e.g., Postgres)
-│   └── deepseek_llm/  # DeepSeek Qwen‑7B LLM microservice
-├── .env               # Environment variables
+│   ├── router_api/    # SQL retrieval & prompt builder
+│   └── vector_db/     # PostgreSQL + pgvector configuration
 ├── docker-compose.yml # Docker Compose config for all services
 └── README.md          # (this file)
 ```
-Important:
-* embedding_svc/ exists for future work but is not part of the evaluated or active RAG pipeline.
-* Aurora’s retrieval layer is SQL + Prolog, not vector-based.
+
+**Note:** `embedding_svc/` exists for future work but is not part of the active RAG pipeline. Aurora's retrieval layer uses SQL + Prolog, not vector similarity.
 
 ---
 

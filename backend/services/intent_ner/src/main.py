@@ -128,7 +128,7 @@ def detect_intent(text: str) -> str:
     # 2) credit-info, check-prerequisite or explain-requirement keywords
     for intent in ("credit-info", "check-prerequisite", "explain-requirement"):
         for kw in INTENT_RULES[intent]:
-            if re.search(re.escape(kw), text, re.I):
+            if re.search(kw, text, re.I):
                 # but “why” alone should only count if there’s a course code
                 if intent == "explain-requirement" and kw.lower() == "why":
                     if extract_courses(text):
@@ -242,6 +242,8 @@ def extract_filters(text: str):
 def completed_courses(user_id: int) -> set[str]:
     """
     Return a set { "COP_2210", … } with all courses the student has completed.
+    Note: Similar function exists in router_api (returns list instead of set).
+    Kept separate as services run in isolated containers.
     """
     with psycopg.connect(PG_DSN) as c:
         cur = c.cursor()

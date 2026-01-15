@@ -1,5 +1,5 @@
 /* ================================================================
-   JobCourse-Fit Database ✧  Full Schema  ✧  2025-05-01 
+   Aurora Academic Advising Database ✧  Full Schema  ✧  2025-05-01
    ================================================================ */
 
 /* ---------- Bootstrap: pgvector -------------------------------- */
@@ -247,7 +247,6 @@ CREATE TABLE IF NOT EXISTS Course_Category_Rank (
 
 CREATE INDEX IF NOT EXISTS idx_rank_cat_pos ON Course_Category_Rank(category_id, rank_pos);
 CREATE INDEX IF NOT EXISTS idx_rank_course  ON Course_Category_Rank(course_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_job_url ON Job_Postings(job_url);
 
 
 /* ===============================================================

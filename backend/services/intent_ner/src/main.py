@@ -68,7 +68,7 @@ app = FastAPI(title="Intent + NER + Router")
 # ── LIFECYCLE: load skill names from Postgres into matcher ──────
 @app.on_event("startup")
 def startup():
-    # 1) open connection
+    """Load skill names from database and initialize the PhraseMatcher."""
     conn = psycopg.connect(PG_DSN)
     conn.autocommit = True
 
@@ -110,6 +110,11 @@ WORD_NUMBERS = {
 }
 
 def detect_intent(text: str) -> str:
+    """
+    Classify user query into one of: recommend-courses, check-prerequisite,
+    explain-requirement, credit-info, or generic.
+    Uses regex patterns defined in INTENT_RULES.
+    """
     low = text.lower()
     
     # credit‐cap + “what/suggest/recommend” → recommend‐courses
@@ -151,7 +156,11 @@ def detect_intent(text: str) -> str:
 
     return "generic"
 
-def extract_filters(text: str):
+def extract_filters(text: str) -> tuple:
+    """
+    Extract structured filters from user query text.
+    Returns: (skill_ids, semester, credit_cap, long_term, year, course_limit)
+    """
     doc = nlp(text)
     
     def replace_word_num(m):
@@ -255,13 +264,12 @@ def completed_courses(user_id: int) -> set[str]:
         """, (user_id,))
         return {row[0].upper() for row in cur.fetchall()}
 
-# explicit-order patterns (need/before, take/before, …)
+# ── REGEX PATTERNS (used by detect_intent) ────────────────────────────
 PAT_BEFORE = re.compile(
     r"\b(?:take|need|needs|requires?)\s+([A-Z]{2,4}[_\-\s]?\d{3,4})\s+before\s+([A-Z]{2,4}[_\-\s]?\d{3,4})",
     re.I
 )
 
-# long- vs short-term roadmap triggers (move these above detect_intent)
 LONG_TERM_RE = re.compile(
     r"\b(?:plan the rest of|roadmap|degree plan|long[-\s]?term|plan of study"
     r"|final (?:academic )?year|graduate next"

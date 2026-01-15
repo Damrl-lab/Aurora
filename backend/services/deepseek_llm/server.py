@@ -1,4 +1,9 @@
-# services/deepseek_llm/server.py
+"""
+DeepSeek LLM Service
+
+Generates natural language academic advising responses using
+DeepSeek-R1-Distill-Qwen-7B with chain-of-thought reasoning.
+"""
 import os
 import re
 import textwrap
@@ -108,8 +113,8 @@ class LLMResponse(BaseModel):
     plan:    Optional[Any] = Field(None, description="The upstream roadmap, if any")
 
 
-# ──────── Helper to strip any immediately-repeated n-gram of length ≥3 ───────
 def remove_repeated_ngrams(text: str, n_min: int = 3) -> str:
+    """Remove immediately-repeated word n-grams (length >= n_min) from text."""
     words = text.split()  # split on any whitespace
     L = len(words)
     # scan from largest to n_min n-grams
@@ -125,8 +130,8 @@ def remove_repeated_ngrams(text: str, n_min: int = 3) -> str:
             i += 1
     return " ".join(words)
 
-# ──────── Helper to strip any repeated sentences ────────────────────────
 def remove_repeated_sentences(text: str) -> str:
+    """Remove duplicate sentences from text to clean up LLM repetition artifacts."""
     # split on end-of-sentence punctuation + whitespace
     sentences = re.split(r'(?<=[\.!?])\s+|(?=```)', text)
     seen = set()

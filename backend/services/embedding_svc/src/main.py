@@ -1,4 +1,10 @@
-# services/embedding_svc/src/main.py
+"""
+Embedding Service (Future Extension)
+
+Provides vector similarity search using sentence-transformers embeddings
+stored in PostgreSQL with pgvector. Currently disconnected from the main
+pipeline - Aurora uses SQL + Prolog for retrieval instead.
+"""
 import os, psycopg, numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -13,8 +19,9 @@ app = FastAPI(title="Vector Lookup / Similarity Service")
 
 
 def get_conn() -> psycopg.Connection:
+    """Create a PostgreSQL connection with pgvector support."""
     conn = psycopg.connect(PG_DSN)
-    register_vector(conn)          # ← tells psycopg how to adapt “vector”
+    register_vector(conn)
     return conn
 
 
@@ -31,6 +38,7 @@ def as_vec(x: np.ndarray) -> Vector:
 
 @app.post("/query_knn")
 def query_knn(q: KNNQuery):
+    """Find k-nearest courses by embedding similarity to query text."""
     emb = as_vec(model.encode(q.text, normalize_embeddings=True))
 
     where_clause = "TRUE"

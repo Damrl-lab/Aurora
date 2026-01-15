@@ -123,15 +123,19 @@ def _normalize_id(cid: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "", cid).lower()
 
 def _skill_names(ids: list[int]) -> list[str]:
+    """Convert skill IDs to skill names for display in prompts."""
     if not ids:
         return []
     with conn.cursor() as cur:
         cur.execute("SELECT skill_name FROM skills WHERE skill_id=ANY(%s)", (ids,))
         return [r[0] for r in cur.fetchall()]
 
-def get_student_context(user_id: int):
+def get_student_context(user_id: int) -> tuple[str | None, list[str]]:
+    """
+    Fetch student's active program and course history.
+    Returns (program_id, list_of_taken_course_ids).
+    """
     with conn.cursor() as cur:
-        # only pick an active enrollment
         cur.execute("""
             SELECT mo.program_id,
                    COALESCE(m.major_name, mo.program_name)
@@ -172,6 +176,7 @@ def completed_courses(user_id: int) -> list[str]:
         return [r[0].upper() for r in cur.fetchall()]
     
 def infer_next_term_year(semester: str) -> int:
+    """Infer the calendar year for the next occurrence of a given semester."""
     today = datetime.date.today()
     yr, mo = today.year, today.month
     sem = semester.lower()
@@ -208,6 +213,11 @@ async def _prolog_stub(cid: str) -> dict[str, str]:
 
 async def make_course_blocks(cur: psycopg.Cursor,
                             ids: list[str]) -> tuple[str, list[str]]:
+    """
+    Build COURSE_FACT blocks for the given course IDs.
+    Returns (formatted_blocks_string, list_of_confirmed_ids).
+    Falls back to Prolog KB if course not found in Postgres.
+    """
     if not ids:
         return "", []
     cur.execute("""
@@ -237,15 +247,16 @@ credits: {cr}
     return "\n".join(blocks), confirmed
 
 def build_prompt(raw_q: str, f: Filter, ctx_blocks: str, top_ids: list[str]) -> str:
+    """
+    Build a structured 5W+1H prompt for the LLM.
+    Combines student query, context blocks, and chain-of-thought frame.
+    """
     who = f.program or "unknown major"
     if f.user_id and not f.program:
         major, _ = get_student_context(f.user_id)
         who = major or who
 
     what = raw_q[:80] + ("…" if len(raw_q) > 80 else "")
-    # build “WHEN:” label including the year
-    # if the user requested a semester but we have no offerings table/column:
-    warning = None
     if f.semester:
         year = f.year or infer_next_term_year(f.semester)
         when = f"{f.semester} {year}"
@@ -464,6 +475,7 @@ async def candidate_ids(f: Filter):
 
 # ─────────────────── 2. Long-term roadmap ──────────────────────────
 def build_roadmap_prompt(raw_q: str, f: Filter, plan: list[dict]) -> str:
+    """Build a structured prompt for multi-semester degree planning."""
     who = f.program or "unknown major"
     # label WHEN line as e.g. “Fall 2025”
     when = f"{f.semester} {f.year}" if f.semester else "next available term"

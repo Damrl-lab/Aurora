@@ -22,8 +22,11 @@ type" version.
   - macOS / Windows: Docker Desktop. Give it 8 GB RAM / 4 CPUs / 50 GB
     disk in Settings → Resources.
 - **Git**.
-- **8+ GB free RAM** for CPU inference, or an NVIDIA GPU for fast LLM
-  inference.
+- **Memory.** 8 GB RAM is enough for the non-LLM services (Postgres,
+  Prolog, router, pipeline). For CPU inference of `deepseek_llm` you
+  need **32+ GB RAM** — Qwen-7B at fp32 occupies ~28 GB and you will
+  OOM on load with anything less. On an NVIDIA GPU (≥16 GB VRAM),
+  host-RAM requirements drop back to ~8 GB.
 - **~50 GB free disk** where Docker stores images. Most of it is the
   `deepseek_llm` image (~38 GB — the model weights are baked in).
 - `sudo` rights on `docker` commands, or membership in the `docker` group.
@@ -78,6 +81,11 @@ EOF
 > volume is initialized with that password and Postgres **ignores**
 > subsequent `POSTGRES_PASSWORD` edits in this file. If you need to
 > change it later, see Troubleshooting §7a.
+>
+> Also: avoid single quotes, double quotes, backticks, `$`, and
+> backslashes in the password. The `ALTER USER ... WITH PASSWORD '...'`
+> command in §7a is awkward to escape if the password itself contains
+> quoting characters.
 
 ### 2b. `backend/.env` — per-host compose overrides (OPTIONAL)
 
@@ -112,6 +120,11 @@ First run builds 7 images and pulls `pgvector/pgvector:pg16`. Budget
 **20–30 minutes** — the `deepseek_llm` build downloads the Qwen-7B
 model weights and bakes them into the image, which alone is ~15 min
 on a decent connection.
+
+If the `deepseek_llm` build fails partway through (network blip, disk
+pressure, etc.), just re-run `sudo docker compose build deepseek_llm`.
+Docker's layer cache picks up where it left off — you do not restart
+the whole multi-gigabyte download from scratch.
 
 After the command returns:
 
@@ -213,6 +226,11 @@ sudo docker compose ps -a        # confirm
 ```
 
 Usually finishes in seconds.
+
+`db_init` re-runs on every `docker compose up` and exits 0. Its
+loaders use UPSERT patterns throughout, so running it against an
+already-seeded database just prints `✅` lines and exits cleanly —
+nothing is wiped or duplicated.
 
 Tear down without losing data:
 

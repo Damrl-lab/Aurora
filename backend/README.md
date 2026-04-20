@@ -4,6 +4,14 @@ This README covers setup, architecture, and service orchestration for Aurora’s
 
 ---
 
+> **New here? Start with [DEPLOYMENT.md](./DEPLOYMENT.md)** — a tested,
+> step-by-step walkthrough for bringing the backend up on a fresh host,
+> with every failure mode we actually hit and fixed. This README is a
+> higher-level reference; `DEPLOYMENT.md` is the "here is exactly what
+> to type" version.
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)

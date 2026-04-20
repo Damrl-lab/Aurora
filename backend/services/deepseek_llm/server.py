@@ -70,19 +70,29 @@ tokenizer.add_special_tokens(
     {"additional_special_tokens": ["<think>", "</think>", "<response>", "</response>"]}
 )
 
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4"
-)
-
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
-    device_map="auto",
-    quantization_config=bnb_config,
-    trust_remote_code=True,
-)
+if torch.cuda.is_available():
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4"
+    )
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        device_map="auto",
+        quantization_config=bnb_config,
+        trust_remote_code=True,
+    )
+else:
+    # CPU fallback (no quantization). Slow but works for plumbing tests.
+    # Qwen-7B fp32 ~= 28 GB RAM. Inference will take ~10-30s per token.
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID,
+        device_map="cpu",
+        torch_dtype=torch.float32,
+        trust_remote_code=True,
+        low_cpu_mem_usage=True,
+    )
 model.resize_token_embeddings(len(tokenizer))
 model.eval()
 

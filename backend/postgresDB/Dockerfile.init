@@ -1,0 +1,19 @@
+# postgresDB/Dockerfile.init
+# One-shot DB seeder image. Source + data baked in to bypass snap docker
+# bind-mount limitations (snap docker on this host cannot read /lclhome/).
+FROM python:3.11-slim
+
+WORKDIR /workdir
+
+# Install Python deps first (separate layer for caching across rebuilds)
+COPY postgresDB/requirements-loader.txt /tmp/requirements-loader.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-loader.txt
+
+# Copy source code and data
+COPY postgresDB /workdir/postgresDB
+COPY data_sources /workdir/data_sources
+
+ENV PYTHONPATH=/workdir/postgresDB
+
+# Default; compose `command:` overrides
+CMD ["bash"]

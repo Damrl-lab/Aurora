@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 # ---------------- Postgres + pgvector -------------
   vector_db:
@@ -10,19 +8,19 @@ services:
 
 # ---------------- One-shot DB seeder --------------
   db_init:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: postgresDB/Dockerfile.init
     depends_on: [ vector_db ]
     working_dir: /workdir
     env_file: ./postgresDB/.env
     environment:
       PYTHONPATH: /workdir/postgresDB
       PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-    volumes:
-      - ./postgresDB:/workdir/postgresDB:ro
-      - ./data_sources:/workdir/data_sources:ro
+    # Volumes removed: source + data baked into image (postgresDB/Dockerfile.init)
+    # because snap docker on this host cannot bind-mount from /lclhome/.
     command: >
       bash -c "
-        pip install --no-cache-dir -r /workdir/postgresDB/requirements-loader.txt &&
         python /workdir/postgresDB/init_schema.py || true &&
         python /workdir/postgresDB/embed_init.py &&
         python /workdir/postgresDB/data_loaders/load_all.py
@@ -32,28 +30,25 @@ services:
   # ---------------- DeepSeek LLM  -------------------
   deepseek_llm:
     build: ./services/deepseek_llm
-    runtime: nvidia
+    # runtime: nvidia          # GPU broken on bhimani-s04 (NVML driver/library mismatch); CPU-only for now
     working_dir: /app
     volumes:
-      - ./services/deepseek_llm:/app           
+      # NOTE: ./services/deepseek_llm:/app bind mount intentionally removed.
+      # Snap-confined docker on this host cannot read /lclhome/, so the mount
+      # silently masked the baked-in /app/server.py inside the image.
+      # Trade-off: no live code reload. Run `docker compose restart deepseek_llm` after edits.
       - ./services/deepseek_llm/.hf_cache:/hf_cache
     environment:
       MODEL_ID: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
       HF_HOME: /hf_cache
-      NVIDIA_VISIBLE_DEVICES: all
-      WATCHFILES_FORCE_POLLING: "true"
-      WATCHFILES_POLLING_INTERVAL: "250"
-    entrypoint: ""         
+      # NVIDIA_VISIBLE_DEVICES: all    # disabled: GPU not usable on this host
+    entrypoint: ""
     command:
       - sh
       - -c
       - |
           pip install --no-cache-dir 'uvicorn[standard]' && \
-          exec uvicorn server:app \
-              --host 0.0.0.0 --port 8001 \
-              --reload \
-              --reload-dir=/app \
-              --reload-include='*.py'
+          exec uvicorn server:app --host 0.0.0.0 --port 8001
     ports: ["8011:8001"]
 
 
@@ -101,17 +96,14 @@ services:
 
 # ───────  Orchestrator that runs the full chain  ──────────────────────
   pipeline_api:
-    image: python:3.11-slim
+    build: ./services/pipeline_api
     working_dir: /app
-    ports: ["8010:8000"]             
+    ports: ["8010:8000"]
     environment:
-      INTENT_URL:  "http://intent_ner:8000"    
+      INTENT_URL:  "http://intent_ner:8000"
       LLM_URL:     "http://deepseek_llm:8001"
-    volumes:
-      - ./services/pipeline_api:/app:ro          
-    command: >
-      sh -c "pip install --no-cache-dir fastapi uvicorn 'httpx<1' &&
-             uvicorn gateway:app --host 0.0.0.0 --port 8000"
+    # Volume removed: source baked into image (services/pipeline_api/Dockerfile)
+    # because snap docker on this host cannot bind-mount from /lclhome/.
     depends_on: [intent_ner, deepseek_llm]
 
 

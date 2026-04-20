@@ -4,3 +4,8 @@
 # Ignore .env files at root and anywhere else
 .env
 **/.env
+
+# local safety backups
+*.bak.*
+# HuggingFace model cache (multi-GB weights)
+backend/services/deepseek_llm/.hf_cache/

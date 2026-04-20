@@ -6,7 +6,7 @@ Idempotent – only rows where `embedding IS NULL`.
 from __future__ import annotations
 import os, psycopg, numpy as np
 from sentence_transformers import SentenceTransformer
-from pgvector.psycopg import Vector
+from pgvector.psycopg import Vector, register_vector
 
 # ───────────── DSN
 user  = os.getenv("POSTGRES_USER")
@@ -28,6 +28,7 @@ def encode(txt: str) -> Vector:              # return the right type
     return Vector(vec.tolist())
 
 with psycopg.connect(PG_DSN, autocommit=True) as conn:
+    register_vector(conn)
     cur = conn.cursor()
     cur.execute("""
         SELECT course_id,

@@ -169,6 +169,25 @@ POSTGRES_HOST=vector_db
 POSTGRES_PORT=5432
 ```
 
+### Per-Host Overrides (`backend/.env`)
+
+A few `docker-compose.yml` values are environment-driven so you don't need to
+edit the compose file to adapt the stack to your machine. Copy the template
+and edit as needed:
+
+```bash
+cp backend/.env.example backend/.env
+# edit backend/.env
+```
+
+| Variable | Default | When to change |
+|----------|---------|----------------|
+| `PIPELINE_API_PORT` | `8010` | Port `:8010` is already taken on your host (common on shared servers). |
+| `CUDA_VISIBLE_DEVICES` | *(empty)* | Set to `-1` on hosts where `torch.cuda.is_available()` returns `True` but the GPU cannot actually be used — e.g., shared Linux servers whose NVML stub lies about GPU availability. Without this, `deepseek_llm` will take the 4-bit quantization path and crash with `No GPU found`. |
+
+`backend/.env` is gitignored; `backend/.env.example` is committed as a
+template so each host can carry its own overrides.
+
 ---
 
 ## Docker Setup & Commands
@@ -237,6 +256,20 @@ docker compose logs -f router_api intent_ner prolog_kb deepseek_llm pipeline_api
 ---
 
 ## Postman Testing
+
+> **Pick a real `user_id` first.** The seeded database contains 100 students
+> with randomly-generated ids. Endpoints that require a `user_id` will return
+> `404 "No active program found for this user"` if you pass one that isn't
+> in the seed. Query your instance:
+>
+> ```bash
+> docker compose exec vector_db psql -U postgres -d course_advisor \
+>   -c "SELECT user_id, program_id FROM User_Program WHERE status='active' LIMIT 5;"
+> ```
+>
+> Replace the `user_id` in the examples below with one of those values.
+> Also note: the port in the `pipeline_api` example is whatever you set
+> `PIPELINE_API_PORT` to (default `8010`).
 
 Use Postman (or any HTTP client) to hit the following endpoints:
 
@@ -320,8 +353,11 @@ docker compose exec vector_db psql -U postgres -d course_advisor
 |-------|----------|
 | **Stale containers** | Run `docker compose down` before builds |
 | **Model changes not reflected** | Editing `server.py` in `deepseek_llm` auto-reloads (~1s) |
-| **Port conflicts** | Ensure ports 8000–8011 are free |
+| **Port conflicts** | Ensure ports 8000–8011 are free, or override via `PIPELINE_API_PORT` in `backend/.env` |
 | **Prolog issues** | Check rule files in `services/prolog_kb`; set `DEBUG_PROLOG=true` |
+| **`router_api` / `intent_ner` fail with `password authentication failed for user "postgres"`** | The `pgdata` volume was initialized with a different password than the one currently in `backend/postgresDB/.env`. Postgres only reads `POSTGRES_PASSWORD` on the first init. Non-destructive fix: `docker compose exec vector_db psql -U postgres -c "ALTER USER postgres WITH PASSWORD '''<password-from-.env>'''"`. Destructive fix: `docker compose down && docker volume rm backend_pgdata && docker compose up -d` (re-runs `db_init`). |
+| **`/recommend` returns `"No active program found for this user"`** | The `user_id` you passed is not in the seeded data. Run the psql query in the Postman Testing section to find real ids. |
+| **`deepseek_llm` crashes with `No GPU found. A GPU is needed for quantization.`** | `torch.cuda.is_available()` returned `True` but the GPU cannot actually be used. Set `CUDA_VISIBLE_DEVICES=-1` in `backend/.env`, then `docker compose up -d deepseek_llm`. |
 
 ### macOS-Specific
 

@@ -41,7 +41,9 @@ services:
     environment:
       MODEL_ID: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
       HF_HOME: /hf_cache
-      CUDA_VISIBLE_DEVICES: "-1"   # force CPU; NVML stub on this host lies about is_available()
+      # Override to "-1" via backend/.env on hosts where torch.cuda.is_available()
+      # returns True but the GPU is actually unusable (e.g., NVML stub on shared boxes).
+      CUDA_VISIBLE_DEVICES: "${CUDA_VISIBLE_DEVICES:-}"
       # NVIDIA_VISIBLE_DEVICES: all    # disabled: GPU not usable on this host
     entrypoint: ""
     command:
@@ -99,7 +101,9 @@ services:
   pipeline_api:
     build: ./services/pipeline_api
     working_dir: /app
-    ports: ["8020:8000"]
+    # Host port for the public pipeline endpoint. Override PIPELINE_API_PORT in
+    # backend/.env if :8010 is already taken on your host.
+    ports: ["${PIPELINE_API_PORT:-8010}:8000"]
     environment:
       INTENT_URL:  "http://intent_ner:8000"
       LLM_URL:     "http://deepseek_llm:8001"
